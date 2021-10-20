@@ -16,7 +16,6 @@ class PFLocaliser(PFLocaliserBase):
         super(PFLocaliser, self).__init__()
         
         # ----- Set motion model parameters
- 
         # ----- Sensor model parameters
         self.NUMBER_PREDICTED_READINGS = 20     # Number of readings to predict
     def init_random_pose(self, mean_pose, sig):
@@ -28,14 +27,14 @@ class PFLocaliser(PFLocaliserBase):
     def init_random_position(self, mean_pos, sig):
         from geometry_msgs.msg import Point
         p = Point()
-        p.x = random.gauss(mean_pos.x, sig)
-        p.y = random.gauss(mean_pos.y, sig)
-        p.z = random.gauss(mean_pos.z, sig)
+        p.x = gauss(mean_pos.x, sig)
+        p.y = gauss(mean_pos.y, sig)
+        p.z = gauss(mean_pos.z, sig)
         return p
     def init_random_orientation(self,mean_ori, sig):
         from geometry_msgs.msg import Quaternion
         q = Quaternion()
-        q.w = random.gauss(mean_ori.w, sig)
+        q.w = gauss(mean_ori.w, sig)
         return q
         
        
@@ -53,10 +52,14 @@ class PFLocaliser(PFLocaliserBase):
         :Return:
             | (geometry_msgs.msg.PoseArray) poses of the particles
         """
-        print('initpose',initialpose.pose.pose)
-        print(self.init_random_pose(initialpose.pose.pose, 0.1))
-        
-        return PoseArray()
+    
+        N = 12 #number of particles
+        sig = 0.1 # sigma of noise gaussian
+        pose_array = PoseArray()
+        for i in range(N):
+            pose_array.posesappend(self.init_random_pose(initialpose.pose.pose, 0.1))
+        print(pose_array)
+        return pose_array
 
     
     def update_particle_cloud(self, scan):
