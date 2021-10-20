@@ -1,22 +1,25 @@
-from geometry_msgs.msg import Pose, PoseArray, Quaternion
+from geometry_msgs.msg import Pose, PoseArray, Quaternion, Point
 from . pf_base import PFLocaliserBase
 import math
 import rospy
 
 from . util import rotateQuaternion, getHeading
 from random import random, gauss
-from time import time
+from time import time,sleep
 
 
 class PFLocaliser(PFLocaliserBase):
        
     def __init__(self):
+        self.number_of_particles = 200
         # ----- Call the superclass constructor
         super(PFLocaliser, self).__init__()
         
         # ----- Set motion model parameters
         # ----- Sensor model parameters
         self.NUMBER_PREDICTED_READINGS = 20     # Number of readings to predict
+
+
     def init_random_pose(self, mean_pose, sig):
         pose = Pose()
         pose.position = self.init_random_position(mean_pose.position, sig)
@@ -24,7 +27,6 @@ class PFLocaliser(PFLocaliserBase):
         return pose
 
     def init_random_position(self, mean_pos, sig):
-        from geometry_msgs.msg import Point
         p = Point()
         p.x = gauss(mean_pos.x, sig)
         p.y = gauss(mean_pos.y, sig)
@@ -49,7 +51,7 @@ class PFLocaliser(PFLocaliserBase):
             | (geometry_msgs.msg.PoseArray) poses of the particles
         """
     
-        N = 500 #number of particles
+        N = self.number_of_particles #number of particles
         sig =8  # sigma of noise gaussian
         pose_array = PoseArray()
         for i in range(N):
@@ -58,10 +60,7 @@ class PFLocaliser(PFLocaliserBase):
        
         pose_array.header = initialpose.header
         
-        f = open('tmp', 'w+')
-        f.write(str(dir(self.occupancy_map)))
-        f.write(str(self.occupancy_map))
-        f.close()
+        
         return pose_array
 
     
@@ -74,9 +73,54 @@ class PFLocaliser(PFLocaliserBase):
             | scan (sensor_msgs.msg.LaserScan): laser scan to use for update
 
          """
-        
-        pass
 
+        desired_particles_num = self.number_of_particles 
+        weight_data = []
+        # ----- Compute the likelihood weighting for each of a set of particles
+        
+        for p in self.particlecloud.poses:
+            weight_data.append(self.sensor_model.get_weight(scan, p))
+        
+        weight_data = self.normalise(weight_data)
+        cdf = [weight_data[0]]
+        
+        for i in range(1,len(weight_data)):
+            cdf.append(cdf[i-1] + weight_data[i])
+        
+        threshold = math.pow(desired_particles_num,-1)
+        i=1
+        new_particle_cloud = PoseArray()
+        for j in range(0, desired_particles_num):
+            while(threshold > cdf[i]):
+                i+=1
+                if i == len(cdf):
+                    self.particlecloud.poses = new_particle_cloud.poses
+                    pub = rospy.Publisher('/particlecloud', PoseArray, queue_size=50)
+                    pub.publish(self.particlecloud)
+                    print(self.particlecloud.poses[0])
+                    return
+            new_particle_cloud.poses.append(self.particlecloud.poses[i])
+            
+            '''if j+1 == len(threshold):
+                threshold.append(threshold[j] + math.pow(desired_particles_num,-1))
+            else:
+                threshold[j+1] = threshold[j] + math.pow(desired_particles_num,-1)
+            '''
+            threshold = threshold + math.pow(desired_particles_num,-1)
+        self.particlecloud.poses = new_particle_cloud.poses
+        pub = rospy.Publisher('/particlecloud', PoseArray, queue_size=50)
+        pub.publish(self.particlecloud)
+        print(self.particlecloud.poses[0])
+        
+        
+    def normalise(self, l):
+        total = 0
+        for i in range(len(l)):
+            total +=l[i]
+        print(total)
+        for a in range(len(l)):
+            l[a] = l[a]/ total
+        return l
     def estimate_pose(self):
         """
         This should calculate and return an updated robot pose estimate based

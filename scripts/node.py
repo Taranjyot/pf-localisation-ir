@@ -40,7 +40,7 @@ class ParticleFilterLocalisationNode(object):
 
         rospy.loginfo("Waiting for a map...")
         try:
-            ocuccupancy_map = rospy.wait_for_message("/map", OccupancyGrid, 20)
+            ocuccupancy_map = rospy.wait_for_message("map", OccupancyGrid, 20)
         except:
             rospy.logerr("Problem getting a map. Check that you have a map_server"
                      " running: rosrun map_server map_server <mapname> " )
