@@ -4,7 +4,7 @@ import math
 import rospy
 
 from . util import rotateQuaternion, getHeading
-from random import random, gauss
+import random
 
 from time import time
 
@@ -20,6 +20,7 @@ class PFLocaliser(PFLocaliserBase):
         # ----- Sensor model parameters
         self.NUMBER_PREDICTED_READINGS = 20     # Number of readings to predict
     def init_random_pose(self, mean_pose, sig):
+        
         pose = Pose()
         pose.position = self.init_random_position(mean_pose.position, sig)
         pose.orientation = self.init_random_orientation(mean_pose.orientation, sig)
@@ -28,7 +29,7 @@ class PFLocaliser(PFLocaliserBase):
     def init_random_position(self, mean_pos, sig):
         from geometry_msgs.msg import Point
         p = Point()
-        p.x = random(mean_pos.x, sig)
+        p.x = random.gauss(mean_pos.x, sig)
         p.y = random.gauss(mean_pos.y, sig)
         p.z = random.gauss(mean_pos.z, sig)
         return p
@@ -68,7 +69,7 @@ class PFLocaliser(PFLocaliserBase):
             | scan (sensor_msgs.msg.LaserScan): laser scan to use for update
 
          """
-        
+        print(scan.ranges)
         pass
 
     def estimate_pose(self):
