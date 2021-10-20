@@ -28,7 +28,7 @@ class PFLocaliser(PFLocaliserBase):
     def init_random_position(self, mean_pos, sig):
         from geometry_msgs.msg import Point
         p = Point()
-        p.x = random(mean_pos.x, sig)
+        p.x = random.gauss(mean_pos.x, sig)
         p.y = random.gauss(mean_pos.y, sig)
         p.z = random.gauss(mean_pos.z, sig)
         return p
