@@ -35,7 +35,7 @@ class ParticleFilterLocalisationNode(object):
         self._pose_publisher = rospy.Publisher("/estimatedpose", PoseStamped)
         self._amcl_pose_publisher = rospy.Publisher("/amcl_pose",
                                                     PoseWithCovarianceStamped)
-        self._cloud_publisher = rospy.Publisher("/particlecloud", PoseArray)
+        self._cloud_publisher = rospy.Publisher("/particlecloud", PoseArray, queue_size=10)
         self._tf_publisher = rospy.Publisher("/tf", tfMessage)
 
         rospy.loginfo("Waiting for a map...")

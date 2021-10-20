@@ -5,7 +5,6 @@ import rospy
 
 from . util import rotateQuaternion, getHeading
 from random import random, gauss
-
 from time import time
 
 
@@ -29,15 +28,12 @@ class PFLocaliser(PFLocaliserBase):
         p = Point()
         p.x = gauss(mean_pos.x, sig)
         p.y = gauss(mean_pos.y, sig)
-        p.z = gauss(mean_pos.z, sig)
         return p
     def init_random_orientation(self,mean_ori, sig):
-        from geometry_msgs.msg import Quaternion
-        q = Quaternion()
-        q.w = gauss(mean_ori.w, sig)
-        return q
+        return rotateQuaternion(mean_ori, (2* math.pi * random()) -math.pi )
         
-       
+        
+    
     def initialise_particle_cloud(self, initialpose):
         """
         Set particle cloud to initialpose plus noise
@@ -53,12 +49,16 @@ class PFLocaliser(PFLocaliserBase):
             | (geometry_msgs.msg.PoseArray) poses of the particles
         """
     
-        N = 12 #number of particles
-        sig = 0.1 # sigma of noise gaussian
+        N = 500 #number of particles
+        sig =8  # sigma of noise gaussian
         pose_array = PoseArray()
         for i in range(N):
-            pose_array.posesappend(self.init_random_pose(initialpose.pose.pose, 0.1))
-        print(pose_array)
+            pose_array.poses.append(self.init_random_pose(initialpose.pose.pose, sig))
+        
+       
+        pose_array.header = initialpose.header
+        
+        
         return pose_array
 
     

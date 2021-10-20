@@ -270,7 +270,7 @@ class PFLocaliserBase(object):
         # ----- particle cloud around it
         rospy.loginfo("Got pose. Calling initialise_particle_cloud().")
         self.particlecloud = self.initialise_particle_cloud(self.estimatedpose)
-        self.particlecloud.header.frame_id = "/map"
+        self.particlecloud.header.frame_id = "map"
     
     def set_map(self, occupancy_map):
         """ Set the map for localisation """
@@ -279,4 +279,4 @@ class PFLocaliserBase(object):
         # ----- Map has changed, so we should reinitialise the particle cloud
         rospy.loginfo("Particle filter got map. (Re)initialising.")
         self.particlecloud = self.initialise_particle_cloud(self.estimatedpose)
-        self.particlecloud.header.frame_id = "/map"
+        self.particlecloud.header.frame_id = "map"

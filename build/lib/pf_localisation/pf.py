@@ -4,8 +4,7 @@ import math
 import rospy
 
 from . util import rotateQuaternion, getHeading
-import random
-
+from random import random, gauss
 from time import time
 
 
@@ -16,11 +15,9 @@ class PFLocaliser(PFLocaliserBase):
         super(PFLocaliser, self).__init__()
         
         # ----- Set motion model parameters
- 
         # ----- Sensor model parameters
         self.NUMBER_PREDICTED_READINGS = 20     # Number of readings to predict
     def init_random_pose(self, mean_pose, sig):
-        
         pose = Pose()
         pose.position = self.init_random_position(mean_pose.position, sig)
         pose.orientation = self.init_random_orientation(mean_pose.orientation, sig)
@@ -29,17 +26,14 @@ class PFLocaliser(PFLocaliserBase):
     def init_random_position(self, mean_pos, sig):
         from geometry_msgs.msg import Point
         p = Point()
-        p.x = random.gauss(mean_pos.x, sig)
-        p.y = random.gauss(mean_pos.y, sig)
-        p.z = random.gauss(mean_pos.z, sig)
+        p.x = gauss(mean_pos.x, sig)
+        p.y = gauss(mean_pos.y, sig)
         return p
     def init_random_orientation(self,mean_ori, sig):
-        from geometry_msgs.msg import Quaternion
-        q = Quaternion()
-        q.w = random.gauss(mean_ori.w, sig)
-        return q
+        return rotateQuaternion(mean_ori, (2* math.pi * random()) -math.pi )
         
-       
+        
+    
     def initialise_particle_cloud(self, initialpose):
         """
         Set particle cloud to initialpose plus noise
@@ -54,10 +48,21 @@ class PFLocaliser(PFLocaliserBase):
         :Return:
             | (geometry_msgs.msg.PoseArray) poses of the particles
         """
-        print('initpose',initialpose.pose.pose)
-        print(self.init_random_pose(initialpose.pose.pose, 0.1))
+    
+        N = 500 #number of particles
+        sig =8  # sigma of noise gaussian
+        pose_array = PoseArray()
+        for i in range(N):
+            pose_array.poses.append(self.init_random_pose(initialpose.pose.pose, sig))
         
-        return PoseArray()
+       
+        pose_array.header = initialpose.header
+        
+        f = open('tmp', 'w+')
+        f.write(str(dir(self.occupancy_map)))
+        f.write(str(self.occupancy_map))
+        f.close()
+        return pose_array
 
     
     def update_particle_cloud(self, scan):
@@ -69,7 +74,7 @@ class PFLocaliser(PFLocaliserBase):
             | scan (sensor_msgs.msg.LaserScan): laser scan to use for update
 
          """
-        print(scan.ranges)
+        
         pass
 
     def estimate_pose(self):
