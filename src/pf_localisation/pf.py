@@ -78,6 +78,8 @@ class PFLocaliser(PFLocaliserBase):
         weight_data = []
         # ----- Compute the likelihood weighting for each of a set of particles
         
+
+        self.particlecloud.poses.sort(key= lambda p: self.sensor_model.get_weight(scan, p) )
         for p in self.particlecloud.poses:
             weight_data.append(self.sensor_model.get_weight(scan, p))
         
@@ -108,7 +110,7 @@ class PFLocaliser(PFLocaliserBase):
             threshold = threshold + math.pow(desired_particles_num,-1)
             print('Threshold', threshold,'cdf i', cdf[i])
         print(cloned_particles)
-        self.particlecloud.poses = new_particle_cloud.poses
+        self.particlecloud = new_particle_cloud
         
         #print(self.particlecloud.poses[0])
         #input()

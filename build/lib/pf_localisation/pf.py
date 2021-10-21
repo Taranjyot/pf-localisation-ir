@@ -78,6 +78,8 @@ class PFLocaliser(PFLocaliserBase):
         weight_data = []
         # ----- Compute the likelihood weighting for each of a set of particles
         
+
+        self.particlecloud.poses.sort(key= lambda p: self.sensor_model.get_weight(scan, p) )
         for p in self.particlecloud.poses:
             weight_data.append(self.sensor_model.get_weight(scan, p))
         
@@ -106,9 +108,22 @@ class PFLocaliser(PFLocaliserBase):
                 threshold[j+1] = threshold[j] + math.pow(desired_particles_num,-1)
             '''
             threshold = threshold + math.pow(desired_particles_num,-1)
+<<<<<<< HEAD
             print('Threshold', threshold,'cdf i', cdf[i])
         print(cloned_particles)
         self.particlecloud.poses = new_particle_cloud.poses
+=======
+<<<<<<< Updated upstream
+        self.particlecloud.poses = new_particle_cloud.poses
+        pub = rospy.Publisher('/particlecloud', PoseArray, queue_size=50)
+        pub.publish(self.particlecloud)
+        print(self.particlecloud.poses[0])
+=======
+            print('Threshold', threshold,'cdf i', cdf[i])
+        print(cloned_particles)
+        self.particlecloud = new_particle_cloud
+>>>>>>> Stashed changes
+>>>>>>> master
         
         #print(self.particlecloud.poses[0])
         #input()
