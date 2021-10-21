@@ -78,6 +78,8 @@ class PFLocaliser(PFLocaliserBase):
         weight_data = []
         # ----- Compute the likelihood weighting for each of a set of particles
         
+
+        self.particlecloud.poses.sort(key= lambda p: self.sensor_model.get_weight(scan, p) )
         for p in self.particlecloud.poses:
             weight_data.append(self.sensor_model.get_weight(scan, p))
         
@@ -87,31 +89,31 @@ class PFLocaliser(PFLocaliserBase):
         for i in range(1,len(weight_data)):
             cdf.append(cdf[i-1] + weight_data[i])
         
-        threshold = math.pow(desired_particles_num,-1)
+        threshold = random() * math.pow(desired_particles_num,-1)
         i=1
         new_particle_cloud = PoseArray()
+        print('CDF',cdf)
+        cloned_particles = {}
         for j in range(0, desired_particles_num):
             while(threshold > cdf[i]):
                 i+=1
-                if i == len(cdf):
-                    self.particlecloud.poses = new_particle_cloud.poses
-                    pub = rospy.Publisher('/particlecloud', PoseArray, queue_size=50)
-                    pub.publish(self.particlecloud)
-                    print(self.particlecloud.poses[0])
-                    return
             new_particle_cloud.poses.append(self.particlecloud.poses[i])
-            
+            if cloned_particles.get(i):
+                cloned_particles[i]= cloned_particles.get(i) + 1
+            else:
+                cloned_particles[i]=1
             '''if j+1 == len(threshold):
                 threshold.append(threshold[j] + math.pow(desired_particles_num,-1))
             else:
                 threshold[j+1] = threshold[j] + math.pow(desired_particles_num,-1)
             '''
             threshold = threshold + math.pow(desired_particles_num,-1)
-        self.particlecloud.poses = new_particle_cloud.poses
-        pub = rospy.Publisher('/particlecloud', PoseArray, queue_size=50)
-        pub.publish(self.particlecloud)
-        print(self.particlecloud.poses[0])
+            print('Threshold', threshold,'cdf i', cdf[i])
+        print(cloned_particles)
+        self.particlecloud = new_particle_cloud
         
+        #print(self.particlecloud.poses[0])
+        #input()
         
     def normalise(self, l):
         total = 0
@@ -121,6 +123,10 @@ class PFLocaliser(PFLocaliserBase):
         for a in range(len(l)):
             l[a] = l[a]/ total
         return l
+
+    
+    
+
     def estimate_pose(self):
         """
         This should calculate and return an updated robot pose estimate based
@@ -137,4 +143,28 @@ class PFLocaliser(PFLocaliserBase):
         :Return:
             | (geometry_msgs.msg.Pose) robot's estimated pose.
          """
-        return Pose()
+        sum_xp = sum_yp = sum_xr = sum_yr = sum_zr = sum_wr = 0
+        poses = self.particlecloud.poses
+        for i in range(len(poses)):
+            sum_wr += poses[i].orientation.w
+            sum_zr += poses[i].orientation.z
+            sum_yr += poses[i].orientation.y
+            sum_xr += poses[i].orientation.x
+
+            sum_yp += poses[i].position.y
+            sum_xp += poses[i].position.x
+        avg_xp = sum_xp/200
+        avg_yp = sum_yp/200
+
+        avg_wr = sum_wr/200
+        avg_zr = sum_zr/200
+        avg_yr = sum_yr/200
+        avg_xr = sum_xr/200  
+        new_pose = Pose()
+        new_pose.position.x = avg_xp
+        new_pose.position.y = avg_yp
+        new_pose.orientation.z = avg_zr
+        new_pose.orientation.w = avg_wr
+        new_pose.orientation.y = avg_yr
+        new_pose.orientation.x = avg_xr
+        return new_pose
