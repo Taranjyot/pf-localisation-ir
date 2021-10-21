@@ -11,7 +11,7 @@ from time import time,sleep
 class PFLocaliser(PFLocaliserBase):
        
     def __init__(self):
-        self.number_of_particles = 200
+        self.number_of_particles = 500
         # ----- Call the superclass constructor
         super(PFLocaliser, self).__init__()
         
@@ -73,8 +73,8 @@ class PFLocaliser(PFLocaliserBase):
             | scan (sensor_msgs.msg.LaserScan): laser scan to use for update
 
          """
-
-        desired_particles_num = self.number_of_particles 
+        print(scan)
+        desired_particles_num = self.number_of_particles
         weight_data = []
         # ----- Compute the likelihood weighting for each of a set of particles
         
@@ -82,6 +82,7 @@ class PFLocaliser(PFLocaliserBase):
         self.particlecloud.poses.sort(key= lambda p: self.sensor_model.get_weight(scan, p) )
         for p in self.particlecloud.poses:
             weight_data.append(self.sensor_model.get_weight(scan, p))
+            #print(self.sensor_model.get_weight(scan, p))
         
         weight_data = self.normalise(weight_data)
         cdf = [weight_data[0]]
@@ -89,29 +90,26 @@ class PFLocaliser(PFLocaliserBase):
         for i in range(1,len(weight_data)):
             cdf.append(cdf[i-1] + weight_data[i])
         
-        threshold = random() * math.pow(desired_particles_num,-1)
+        threshold = random()* math.pow(desired_particles_num,-1)
         i=1
         new_particle_cloud = PoseArray()
-        print('CDF',cdf)
-        cloned_particles = {}
+        #print('CDF',cdf)
+        
         for j in range(0, desired_particles_num):
             while(threshold > cdf[i]):
                 i+=1
-            new_particle_cloud.poses.append(self.particlecloud.poses[i])
-            if cloned_particles.get(i):
-                cloned_particles[i]= cloned_particles.get(i) + 1
-            else:
-                cloned_particles[i]=1
+            new_particle_cloud.poses.append(self.init_random_pose(self.particlecloud.poses[i],0.3))
+            
             '''if j+1 == len(threshold):
                 threshold.append(threshold[j] + math.pow(desired_particles_num,-1))
             else:
                 threshold[j+1] = threshold[j] + math.pow(desired_particles_num,-1)
             '''
             threshold = threshold + math.pow(desired_particles_num,-1)
-            print('Threshold', threshold,'cdf i', cdf[i])
-        print(cloned_particles)
+         #   print('Threshold', threshold,'cdf i', cdf[i])
+        #print(cloned_particles)
         self.particlecloud = new_particle_cloud
-        
+
         #print(self.particlecloud.poses[0])
         #input()
         
@@ -119,7 +117,7 @@ class PFLocaliser(PFLocaliserBase):
         total = 0
         for i in range(len(l)):
             total +=l[i]
-        print(total)
+        
         for a in range(len(l)):
             l[a] = l[a]/ total
         return l
