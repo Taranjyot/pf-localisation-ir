@@ -11,7 +11,7 @@ from time import time,sleep
 class PFLocaliser(PFLocaliserBase):
        
     def __init__(self):
-        self.number_of_particles = 500
+        self.number_of_particles = 200
         # ----- Call the superclass constructor
         super(PFLocaliser, self).__init__()
         
@@ -32,7 +32,10 @@ class PFLocaliser(PFLocaliserBase):
         p.y = gauss(mean_pos.y, sig)
         return p
     def init_random_orientation(self,mean_ori, sig):
-        return rotateQuaternion(mean_ori, (2* math.pi * random()) -math.pi )
+        q = Quaternion()
+        q.z = gauss(mean_ori.z,sig)
+        q.w = gauss(mean_ori.w, sig)
+        return q
         
         
     
@@ -73,7 +76,7 @@ class PFLocaliser(PFLocaliserBase):
             | scan (sensor_msgs.msg.LaserScan): laser scan to use for update
 
          """
-        print(scan)
+        
         desired_particles_num = self.number_of_particles
         weight_data = []
         # ----- Compute the likelihood weighting for each of a set of particles
@@ -124,7 +127,6 @@ class PFLocaliser(PFLocaliserBase):
 
     
     
-
     def estimate_pose(self):
         """
         This should calculate and return an updated robot pose estimate based
@@ -141,28 +143,66 @@ class PFLocaliser(PFLocaliserBase):
         :Return:
             | (geometry_msgs.msg.Pose) robot's estimated pose.
          """
-        sum_xp = sum_yp = sum_xr = sum_yr = sum_zr = sum_wr = 0
-        poses = self.particlecloud.poses
-        for i in range(len(poses)):
-            sum_wr += poses[i].orientation.w
-            sum_zr += poses[i].orientation.z
-            sum_yr += poses[i].orientation.y
-            sum_xr += poses[i].orientation.x
 
-            sum_yp += poses[i].position.y
-            sum_xp += poses[i].position.x
-        avg_xp = sum_xp/200
-        avg_yp = sum_yp/200
+        # Implementing hierarchical clustering
 
-        avg_wr = sum_wr/200
-        avg_zr = sum_zr/200
-        avg_yr = sum_yr/200
-        avg_xr = sum_xr/200  
-        new_pose = Pose()
-        new_pose.position.x = avg_xp
-        new_pose.position.y = avg_yp
-        new_pose.orientation.z = avg_zr
-        new_pose.orientation.w = avg_wr
-        new_pose.orientation.y = avg_yr
-        new_pose.orientation.x = avg_xr
-        return new_pose
+        def calculate_distance(mean1, mean2):
+            return math.sqrt(math.pow(mean1[0] - mean2[0],2) + math.pow(mean1[1] - mean2[1],2))
+
+        def calculate_mean(cluster):
+            mean_x = 0
+            mean_y = 0
+            for i in cluster:
+                mean_x += i.x
+                mean_y += i.y
+            len_cluster = len(cluster)
+            mean_x /= len_cluster
+            mean_y /= len_cluster
+            return mean_x, mean_y, len_cluster
+
+        # Each pose is a cluster itself
+        cluster_list = [] # list of clusters, a cluster is a list of poses
+        cluster_data_list = [] # list of the means of the clusters
+        number_clusters = 0
+        for p in self.particlecloud.poses:
+            cluster_list.append([p])
+            cluster_data_list.append((p.position.x, p.position.y, 1))
+            number_clusters += 1
+
+        while number_clusters > 2:
+            lowest_distance = float('inf')
+            cluster1 = -42
+            cluster2 = -427
+            # Finding the two closest clusters
+            for i in range(number_clusters):
+                for j in range(number_clusters):
+                    if i > j:
+                        distance = calculate_distance(cluster_data_list[i], cluster_data_list[j])
+                        if distance < lowest_distance:
+                            lowest_distance = distance
+                            cluster1 = i
+                            cluster2 = j
+            if lowest_distance < 0.5:
+                break
+            # Merging the two closest clusters
+            number_clusters -= 2
+            cluster_list[cluster1].append(cluster_list[cluster2])
+            cluster_list.pop(cluster2)
+            cluster_data_list.pop(cluster2)
+            # Calculate new mean of the cluster
+            cluster_data_list[cluster1] = calculate_mean(cluster_list[cluster1])
+
+        # Computes the tallest cluster
+        tallest_cluster_index = -42
+        for c in cluster_data_list:
+            if c[2] > tallest_cluster_index:
+                tallest_cluster_index = c[2]
+
+        pose = Pose()
+        p = Point()
+        p.x = cluster_data_list[tallest_cluster_index][0]
+        p.y = cluster_data_list[tallest_cluster_index][1]
+        pose.position = p
+        # Todo: Compute the mean of the quaternions
+        
+        return pose
