@@ -97,10 +97,9 @@ class PFLocaliser(PFLocaliserBase):
                     self.particlecloud.poses = new_particle_cloud.poses
                     pub = rospy.Publisher('/particlecloud', PoseArray, queue_size=50)
                     pub.publish(self.particlecloud)
-                    print(self.particlecloud.poses[0])
+                    #print(self.particlecloud.poses[0])
                     return
             new_particle_cloud.poses.append(self.particlecloud.poses[i])
-            
             '''if j+1 == len(threshold):
                 threshold.append(threshold[j] + math.pow(desired_particles_num,-1))
             else:
@@ -110,14 +109,13 @@ class PFLocaliser(PFLocaliserBase):
         self.particlecloud.poses = new_particle_cloud.poses
         pub = rospy.Publisher('/particlecloud', PoseArray, queue_size=50)
         pub.publish(self.particlecloud)
-        print(self.particlecloud.poses[0])
-        
+        #print(self.particlecloud.poses[0])
         
     def normalise(self, l):
         total = 0
         for i in range(len(l)):
             total +=l[i]
-        print(total)
+        #print(total)
         for a in range(len(l)):
             l[a] = l[a]/ total
         return l
@@ -137,4 +135,67 @@ class PFLocaliser(PFLocaliserBase):
         :Return:
             | (geometry_msgs.msg.Pose) robot's estimated pose.
          """
-        return Pose()
+
+        # Implementing hierarchical clustering
+
+        def calculate_distance(mean1, mean2):
+            return math.sqrt(math.pow(mean1[0] - mean2[0],2) + math.pow(mean1[1] - mean2[1],2))
+
+        def calculate_mean(cluster):
+            mean_x = 0
+            mean_y = 0
+            for i in cluster:
+                mean_x += i.x
+                mean_y += i.y
+            len_cluster = len(cluster)
+            mean_x /= len_cluster
+            mean_y /= len_cluster
+            return mean_x, mean_y, len_cluster
+
+        # Each pose is a cluster itself
+        cluster_list = [] # list of clusters, a cluster is a list of poses
+        cluster_data_list = [] # list of the means of the clusters
+        number_clusters = 0
+        for p in self.particlecloud.poses:
+            cluster_list.append([p])
+            cluster_data_list.append((p.position.x, p.position.y, 1))
+            number_clusters += 1
+
+        while number_clusters > 2:
+            lowest_distance = float('inf')
+            cluster1 = -42
+            cluster2 = -427
+            # Finding the two closest clusters
+            for i in range(number_clusters):
+                for j in range(number_clusters):
+                    if i > j:
+                        distance = calculate_distance(cluster_data_list[i], cluster_data_list[j])
+                        if distance < lowest_distance:
+                            lowest_distance = distance
+                            cluster1 = i
+                            cluster2 = j
+            if lowest_distance < 2.5:
+                break
+            # Merging the two closest clusters
+            number_clusters -= 2
+            cluster_list[cluster1].append(cluster_list[cluster2])
+            cluster_list.pop(cluster2)
+            cluster_data_list.pop(cluster2)
+            # Calculate new mean of the cluster
+            cluster_data_list[cluster1] = calculate_mean(cluster_list[cluster1])
+
+        # Computes the tallest cluster
+        tallest_cluster_index = -42
+        for c in cluster_data_list:
+            if c[2] > tallest_cluster_index:
+                tallest_cluster_index = c[2]
+
+        pose = Pose()
+        p = Point()
+        p.x = cluster_data_list[tallest_cluster_index][0]
+        p.y = cluster_data_list[tallest_cluster_index][1]
+        pose.position = p
+        # Todo: Compute the mean of the quaternions
+
+        print(pose)
+        return pose
