@@ -55,7 +55,7 @@ class PFLocaliser(PFLocaliserBase):
         """
     
         N = self.number_of_particles #number of particles
-        sig =8  # sigma of noise gaussian
+        sig =1  # sigma of noise gaussian
         pose_array = PoseArray()
         for i in range(N):
             pose_array.poses.append(self.init_random_pose(initialpose.pose.pose, sig))
@@ -82,7 +82,7 @@ class PFLocaliser(PFLocaliserBase):
         # ----- Compute the likelihood weighting for each of a set of particles
         
 
-        self.particlecloud.poses.sort(key= lambda p: self.sensor_model.get_weight(scan, p) )
+        #self.particlecloud.poses.sort(key= lambda p: self.sensor_model.get_weight(scan, p) )
         for p in self.particlecloud.poses:
             weight_data.append(self.sensor_model.get_weight(scan, p))
             #print(self.sensor_model.get_weight(scan, p))
@@ -202,7 +202,18 @@ class PFLocaliser(PFLocaliserBase):
         p = Point()
         p.x = cluster_data_list[tallest_cluster_index][0]
         p.y = cluster_data_list[tallest_cluster_index][1]
+
+        tallest_cluster = cluster_list[tallest_cluster_index]
+        sum_zr = sum_wr = 0
+        for c in  tallest_cluster:
+            sum_zr+= c.orientation.z
+            sum_wr+= c.orientation.w
+        q = Quaternion()
+        len_tallest_cluster = len(tallest_cluster)
+        q.z = sum_zr/len_tallest_cluster
+        q.w = sum_wr/len_tallest_cluster
         pose.position = p
+        pose.orientation = q
         # Todo: Compute the mean of the quaternions
         
         return pose
