@@ -186,7 +186,7 @@ class PFLocaliser(PFLocaliserBase):
                             cluster1 = i
                             cluster2 = j
 
-            if lowest_distance > 2:
+            if lowest_distance > 1:
                 break
             # Merging the two closest clusters
             number_clusters -= 1
@@ -208,8 +208,7 @@ class PFLocaliser(PFLocaliserBase):
         print("Plus grand cluster : " + str(time.time() - timer))
         timer = time.time()
 
-        '''print('---')
-        print(len(cluster_list))'''
+
         pose = Pose()
         p = Point()
         p.x = cluster_data_list[tallest_cluster_index][0]
