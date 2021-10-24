@@ -5,7 +5,7 @@ import rospy
 
 from . util import rotateQuaternion, getHeading
 from random import random, gauss
-from time import time,sleep
+import time
 
 
 class PFLocaliser(PFLocaliserBase):
@@ -144,6 +144,7 @@ class PFLocaliser(PFLocaliserBase):
             | (geometry_msgs.msg.Pose) robot's estimated pose.
          """
 
+        timer = time.time()
         # Implementing hierarchical clustering
 
         def calculate_distance(mean1, mean2):
@@ -153,8 +154,8 @@ class PFLocaliser(PFLocaliserBase):
             mean_x = 0
             mean_y = 0
             for i in cluster:
-                mean_x += i.x
-                mean_y += i.y
+                mean_x += i.position.x
+                mean_y += i.position.y
             len_cluster = len(cluster)
             mean_x /= len_cluster
             mean_y /= len_cluster
@@ -168,11 +169,13 @@ class PFLocaliser(PFLocaliserBase):
             cluster_list.append([p])
             cluster_data_list.append((p.position.x, p.position.y, 1))
             number_clusters += 1
+        print("Creation liste : " + str(time.time() - timer))
+        timer = time.time()
 
         while number_clusters > 2:
             lowest_distance = float('inf')
             cluster1 = -42
-            cluster2 = -427
+            cluster2 = -42
             # Finding the two closest clusters
             for i in range(number_clusters):
                 for j in range(number_clusters):
@@ -182,22 +185,31 @@ class PFLocaliser(PFLocaliserBase):
                             lowest_distance = distance
                             cluster1 = i
                             cluster2 = j
-            if lowest_distance < 0.5:
+
+            if lowest_distance > 2:
                 break
             # Merging the two closest clusters
-            number_clusters -= 2
-            cluster_list[cluster1].append(cluster_list[cluster2])
-            cluster_list.pop(cluster2)
-            cluster_data_list.pop(cluster2)
+            number_clusters -= 1
+            cluster_list[cluster1].extend(cluster_list[cluster2])
             # Calculate new mean of the cluster
             cluster_data_list[cluster1] = calculate_mean(cluster_list[cluster1])
+            cluster_list.pop(cluster2)
+            cluster_data_list.pop(cluster2)
+        print("Boucle while : " + str(time.time() - timer))
+        timer = time.time()
 
         # Computes the tallest cluster
-        tallest_cluster_index = -42
-        for c in cluster_data_list:
-            if c[2] > tallest_cluster_index:
-                tallest_cluster_index = c[2]
+        tallest_cluster_len = -42
+        tallest_cluster_index = 0
+        for c in range(len(cluster_data_list)):
+            if cluster_data_list[c][2] > tallest_cluster_len:
+                tallest_cluster_len = cluster_data_list[c][2]
+                tallest_cluster_index = c
+        print("Plus grand cluster : " + str(time.time() - timer))
+        timer = time.time()
 
+        '''print('---')
+        print(len(cluster_list))'''
         pose = Pose()
         p = Point()
         p.x = cluster_data_list[tallest_cluster_index][0]
@@ -210,10 +222,11 @@ class PFLocaliser(PFLocaliserBase):
             sum_wr+= c.orientation.w
         q = Quaternion()
         len_tallest_cluster = len(tallest_cluster)
+        print(len_tallest_cluster)
         q.z = sum_zr/len_tallest_cluster
         q.w = sum_wr/len_tallest_cluster
         pose.position = p
         pose.orientation = q
-        # Todo: Compute the mean of the quaternions
-        
+        print("Calcul postion : " + str(time.time() - timer))
+
         return pose
