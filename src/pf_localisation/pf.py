@@ -165,7 +165,7 @@ class PFLocaliser(PFLocaliserBase):
         :Return:
             | (geometry_msgs.msg.Pose) robot's estimated pose.
          """
-
+    
         timer = time.time()
         # Implementing hierarchical clustering
 
