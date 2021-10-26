@@ -6,7 +6,7 @@ import rospy
 
 from . util import rotateQuaternion, getHeading
 from random import random, gauss
-import time
+import time, statistics
 
 
 class PFLocaliser(PFLocaliserBase):
@@ -54,7 +54,6 @@ class PFLocaliser(PFLocaliserBase):
         :Return:
             | (geometry_msgs.msg.PoseArray) poses of the particles
         """
-    
         N = self.number_of_particles #number of particles
         sig =1  # sigma of noise gaussian
         pose_array = PoseArray()
@@ -88,12 +87,15 @@ class PFLocaliser(PFLocaliserBase):
             weight_data.append(self.sensor_model.get_weight(scan, p))
             #print(self.sensor_model.get_weight(scan, p))
         
-        weight_data = self.normalise(weight_data)
-        cdf = [weight_data[0]]
+        normalised_weight_data = self.normalise(weight_data)
+        cdf = [normalised_weight_data[0]]
         
-        for i in range(1,len(weight_data)):
-            cdf.append(cdf[i-1] + weight_data[i])
-        
+        for i in range(1,len(normalised_weight_data)):
+            cdf.append(cdf[i-1] + normalised_weight_data[i])
+        if statistics.mean(weight_data) > 4:
+            desired_particles_num = 200
+        else:
+            desired_particles_num = 300
         threshold = random()* math.pow(desired_particles_num,-1)
         i=1
         new_particle_cloud = PoseArray()
@@ -102,7 +104,16 @@ class PFLocaliser(PFLocaliserBase):
         for j in range(0, desired_particles_num):
             while(threshold > cdf[i]):
                 i+=1
-            new_particle_cloud.poses.append(self.init_random_pose(self.particlecloud.poses[i],0.3))
+
+                # make sigma prop to the inverse of the weight, 
+            
+            #sigma = 1.1/weight_data[i]
+            if weight_data[i] < 4:
+                #robot kidnapped/particle is far away from robot pos
+                sigma = 3
+            else:
+                sigma = 1.1/weight_data[i]
+            new_particle_cloud.poses.append(self.init_random_pose(self.particlecloud.poses[i],sigma))
             
             '''if j+1 == len(threshold):
                 threshold.append(threshold[j] + math.pow(desired_particles_num,-1))
@@ -117,7 +128,8 @@ class PFLocaliser(PFLocaliserBase):
         #print(self.particlecloud.poses[0])
         #input()
         
-    def normalise(self, l):
+    def normalise(self, _l):
+        l = _l.copy()
         total = 0
         for i in range(len(l)):
             total +=l[i]
@@ -167,7 +179,7 @@ class PFLocaliser(PFLocaliserBase):
             cluster_list.append([p])
             cluster_data_list.append((p.position.x, p.position.y, 1))
             number_clusters += 1
-        print("Creation liste : " + str(time.time() - timer))
+        #print("Creation liste : " + str(time.time() - timer))
         timer = time.time()
 
         while number_clusters > 2:
@@ -193,7 +205,7 @@ class PFLocaliser(PFLocaliserBase):
             cluster_data_list[cluster1] = calculate_mean(cluster_list[cluster1])
             cluster_list.pop(cluster2)
             cluster_data_list.pop(cluster2)
-        print("Boucle while : " + str(time.time() - timer))
+        #print("Boucle while : " + str(time.time() - timer))
         timer = time.time()
 
         # Computes the tallest cluster
@@ -203,7 +215,7 @@ class PFLocaliser(PFLocaliserBase):
             if cluster_data_list[c][2] > tallest_cluster_len:
                 tallest_cluster_len = cluster_data_list[c][2]
                 tallest_cluster_index = c
-        print("Plus grand cluster : " + str(time.time() - timer))
+        #print("Plus grand cluster : " + str(time.time() - timer))
         timer = time.time()
 
 
@@ -219,11 +231,21 @@ class PFLocaliser(PFLocaliserBase):
             sum_wr+= c.orientation.w
         q = Quaternion()
         len_tallest_cluster = len(tallest_cluster)
-        print(len_tallest_cluster)
+        #print(len_tallest_cluster)
         q.z = sum_zr/len_tallest_cluster
         q.w = sum_wr/len_tallest_cluster
         pose.position = p
         pose.orientation = q
-        print("Calcul postion : " + str(time.time() - timer))
+        #print("Calcul postion : " + str(time.time() - timer))
 
         return pose
+
+
+
+'''
+adding noise to new particles
+pose estimation - clustering
+pose orientation 
+decreasing variance for noise
+increasing efficency of update_particle function
+'''

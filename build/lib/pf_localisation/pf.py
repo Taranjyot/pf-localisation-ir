@@ -1,11 +1,12 @@
+import math
+
 from geometry_msgs.msg import Pose, PoseArray, Quaternion, Point
 from . pf_base import PFLocaliserBase
-import math
 import rospy
 
 from . util import rotateQuaternion, getHeading
 from random import random, gauss
-from time import time,sleep
+import time, statistics
 
 
 class PFLocaliser(PFLocaliserBase):
@@ -53,7 +54,6 @@ class PFLocaliser(PFLocaliserBase):
         :Return:
             | (geometry_msgs.msg.PoseArray) poses of the particles
         """
-    
         N = self.number_of_particles #number of particles
         sig =1  # sigma of noise gaussian
         pose_array = PoseArray()
@@ -87,12 +87,15 @@ class PFLocaliser(PFLocaliserBase):
             weight_data.append(self.sensor_model.get_weight(scan, p))
             #print(self.sensor_model.get_weight(scan, p))
         
-        weight_data = self.normalise(weight_data)
-        cdf = [weight_data[0]]
+        normalised_weight_data = self.normalise(weight_data)
+        cdf = [normalised_weight_data[0]]
         
-        for i in range(1,len(weight_data)):
-            cdf.append(cdf[i-1] + weight_data[i])
-        
+        for i in range(1,len(normalised_weight_data)):
+            cdf.append(cdf[i-1] + normalised_weight_data[i])
+        if statistics.mean(weight_data) > 4:
+            desired_particles_num = 200
+        else:
+            desired_particles_num = 300
         threshold = random()* math.pow(desired_particles_num,-1)
         i=1
         new_particle_cloud = PoseArray()
@@ -101,7 +104,16 @@ class PFLocaliser(PFLocaliserBase):
         for j in range(0, desired_particles_num):
             while(threshold > cdf[i]):
                 i+=1
-            new_particle_cloud.poses.append(self.init_random_pose(self.particlecloud.poses[i],0.3))
+
+                # make sigma prop to the inverse of the weight, 
+            
+            #sigma = 1.1/weight_data[i]
+            if weight_data[i] < 4:
+                #robot kidnapped/particle is far away from robot pos
+                sigma = 3
+            else:
+                sigma = 1.1/weight_data[i]
+            new_particle_cloud.poses.append(self.init_random_pose(self.particlecloud.poses[i],sigma))
             
             '''if j+1 == len(threshold):
                 threshold.append(threshold[j] + math.pow(desired_particles_num,-1))
@@ -116,7 +128,8 @@ class PFLocaliser(PFLocaliserBase):
         #print(self.particlecloud.poses[0])
         #input()
         
-    def normalise(self, l):
+    def normalise(self, _l):
+        l = _l.copy()
         total = 0
         for i in range(len(l)):
             total +=l[i]
@@ -144,17 +157,15 @@ class PFLocaliser(PFLocaliserBase):
             | (geometry_msgs.msg.Pose) robot's estimated pose.
          """
 
+        timer = time.time()
         # Implementing hierarchical clustering
-
-        def calculate_distance(mean1, mean2):
-            return math.sqrt(math.pow(mean1[0] - mean2[0],2) + math.pow(mean1[1] - mean2[1],2))
 
         def calculate_mean(cluster):
             mean_x = 0
             mean_y = 0
             for i in cluster:
-                mean_x += i.x
-                mean_y += i.y
+                mean_x += i.position.x
+                mean_y += i.position.y
             len_cluster = len(cluster)
             mean_x /= len_cluster
             mean_y /= len_cluster
@@ -168,35 +179,45 @@ class PFLocaliser(PFLocaliserBase):
             cluster_list.append([p])
             cluster_data_list.append((p.position.x, p.position.y, 1))
             number_clusters += 1
+        #print("Creation liste : " + str(time.time() - timer))
+        timer = time.time()
 
         while number_clusters > 2:
             lowest_distance = float('inf')
-            cluster1 = -42
-            cluster2 = -427
+            cluster1 = 0
+            cluster2 = 0
             # Finding the two closest clusters
             for i in range(number_clusters):
                 for j in range(number_clusters):
                     if i > j:
-                        distance = calculate_distance(cluster_data_list[i], cluster_data_list[j])
+                        distance = math.dist(cluster_data_list[i][:2], cluster_data_list[j][:2])
                         if distance < lowest_distance:
                             lowest_distance = distance
                             cluster1 = i
                             cluster2 = j
-            if lowest_distance < 0.5:
+
+            if lowest_distance > 1:
                 break
             # Merging the two closest clusters
-            number_clusters -= 2
-            cluster_list[cluster1].append(cluster_list[cluster2])
-            cluster_list.pop(cluster2)
-            cluster_data_list.pop(cluster2)
+            number_clusters -= 1
+            cluster_list[cluster1].extend(cluster_list[cluster2])
             # Calculate new mean of the cluster
             cluster_data_list[cluster1] = calculate_mean(cluster_list[cluster1])
+            cluster_list.pop(cluster2)
+            cluster_data_list.pop(cluster2)
+        #print("Boucle while : " + str(time.time() - timer))
+        timer = time.time()
 
         # Computes the tallest cluster
-        tallest_cluster_index = -42
-        for c in cluster_data_list:
-            if c[2] > tallest_cluster_index:
-                tallest_cluster_index = c[2]
+        tallest_cluster_len = -42
+        tallest_cluster_index = 0
+        for c in range(len(cluster_data_list)):
+            if cluster_data_list[c][2] > tallest_cluster_len:
+                tallest_cluster_len = cluster_data_list[c][2]
+                tallest_cluster_index = c
+        #print("Plus grand cluster : " + str(time.time() - timer))
+        timer = time.time()
+
 
         pose = Pose()
         p = Point()
@@ -210,10 +231,21 @@ class PFLocaliser(PFLocaliserBase):
             sum_wr+= c.orientation.w
         q = Quaternion()
         len_tallest_cluster = len(tallest_cluster)
+        #print(len_tallest_cluster)
         q.z = sum_zr/len_tallest_cluster
         q.w = sum_wr/len_tallest_cluster
         pose.position = p
         pose.orientation = q
-        # Todo: Compute the mean of the quaternions
-        
+        #print("Calcul postion : " + str(time.time() - timer))
+
         return pose
+
+
+
+'''
+adding noise to new particles
+pose estimation - clustering
+pose orientation 
+decreasing variance for noise
+increasing efficency of update_particle function
+'''
