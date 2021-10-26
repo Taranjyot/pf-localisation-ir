@@ -1,6 +1,7 @@
+import math
+
 from geometry_msgs.msg import Pose, PoseArray, Quaternion, Point
 from . pf_base import PFLocaliserBase
-import math
 import rospy
 
 from . util import rotateQuaternion, getHeading
@@ -147,9 +148,6 @@ class PFLocaliser(PFLocaliserBase):
         timer = time.time()
         # Implementing hierarchical clustering
 
-        def calculate_distance(mean1, mean2):
-            return math.sqrt(math.pow(mean1[0] - mean2[0],2) + math.pow(mean1[1] - mean2[1],2))
-
         def calculate_mean(cluster):
             mean_x = 0
             mean_y = 0
@@ -174,13 +172,13 @@ class PFLocaliser(PFLocaliserBase):
 
         while number_clusters > 2:
             lowest_distance = float('inf')
-            cluster1 = -42
-            cluster2 = -42
+            cluster1 = 0
+            cluster2 = 0
             # Finding the two closest clusters
             for i in range(number_clusters):
                 for j in range(number_clusters):
                     if i > j:
-                        distance = calculate_distance(cluster_data_list[i], cluster_data_list[j])
+                        distance = math.dist(cluster_data_list[i][:2], cluster_data_list[j][:2])
                         if distance < lowest_distance:
                             lowest_distance = distance
                             cluster1 = i
