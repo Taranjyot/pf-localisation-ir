@@ -31,6 +31,15 @@ class PFLocaliser(PFLocaliserBase):
         p = Point()
         p.x = gauss(mean_pos.x, sig)
         p.y = gauss(mean_pos.y, sig)
+        # magic numbers for bag 
+        if p.x > 32:
+            p.x = 32
+        elif p.x < 0:
+            p.x=0
+        if p.y > 32:
+            p.y = 32
+        elif p.y < 0:
+            p.y = 0
         return p
     def init_random_orientation(self,mean_ori, sig):
         q = Quaternion()
