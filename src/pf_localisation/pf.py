@@ -153,7 +153,7 @@ class PFLocaliser(PFLocaliserBase):
         :Args:
             | cluster ([geometry_msgs.msg.Pose]): an array of poses representing the cluster
         :Return:
-            | (float, foat, int) the mean of the x and y coordonates of each particules within the cluster plus the
+            | (float, float, int) the mean of the x and y coordinates of each particules within the cluster plus the
             number of particules within the cluster.
         """
         def calculate_mean(cluster):
