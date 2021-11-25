@@ -33,7 +33,9 @@ class GameManger():
         self.active_hiders: list = []
         self.seeker: int = 0
         self.no_of_players: int = 10
-        self.hiding_spots: list = hidingSpots
+        self.hiding_spots: list = [(1.984, -11.89), (3.05, -7.99),( 10.62, 0.11),(6.56, -1.50), (1.96, -5.11), (1.02, -1.76), (1.94, 5.77), (-3.74, 1.00),
+                                   (-4.1, 3.63), (-5.78, 5.05), (-8.773, 5.57), (-17.09, 5.854), (-12.80, 7.377),
+                                   (-6.14, 11.21), (-9.35, 12.85), (-4.31, 15.46)]
         self.occupied_hiding_spots: list = []
         self._setup_hiding_spots([])
 

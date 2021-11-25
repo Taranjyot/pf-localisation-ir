@@ -50,13 +50,13 @@ class ParticleFilterLocalisationNode(object):
                        ocuccupancy_map.info.resolution))
         self._particle_filter.set_map(ocuccupancy_map)
         
-        self._laser_subscriber = rospy.Subscriber("/base_scan", LaserScan,
+        self._laser_subscriber = rospy.Subscriber("/robot_0/base_scan", LaserScan,
                                                   self._laser_callback,
                                                   queue_size=1)
-        self._initial_pose_subscriber = rospy.Subscriber("/initialpose",
+        self._initial_pose_subscriber = rospy.Subscriber("/robot_0/initialpose",
                                                          PoseWithCovarianceStamped,
                                                          self._initial_pose_callback)
-        self._odometry_subscriber = rospy.Subscriber("/odom", Odometry,
+        self._odometry_subscriber = rospy.Subscriber("/robot_0/odom", Odometry,
                                                      self._odometry_callback,
                                                      queue_size=1)
 
