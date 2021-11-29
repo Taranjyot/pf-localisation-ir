@@ -10,6 +10,7 @@ define topurg ranger
     range [ 0 5.6 ]
     fov 180.0
     samples 500
+    pantilt [ 0.0 0.0 ]
   )
   # generic model properties
   color "black"
@@ -23,8 +24,26 @@ define pioneer position
   gui_nose 1
   drive "diff"
   topurg(pose [ 0.135 0.000 0.202 0.000 ])
+
+  camera
+  (
+    origin [0 0 -0.11 0]
+    # laser properties
+    resolution [ 1280 720 ]
+    range [ 0.2 9.0 ]
+    fov [ 70.0 40.0 ]
+    pantilt [ 0.0 0.0 ]
+
+    # model properties
+    size [ 0.1 0.07 0.05 ]
+    color "blue"
+    watts 100.0 # TODO find watts for sony pan-tilt camera
+  )
 )
 
+define pioneer Camera(
+
+)
 
 define floorplan model
 (
@@ -67,9 +86,9 @@ floorplan
 )
 
 # throw in a robot
-pioneer( pose [ -1.879 0.402 0.000 0 ] name "seeker" color "blue")
+pioneer( pose [ -1.879 0.402 0.000 0 ] name "seeker" color "black")
 pioneer( pose [ -9.490 8.906 0.000 0 ] name "hider1" color "red")
-pioneer( pose [ -0.556 4.023 0.000 0.000 ] name "hider2" color "black")
+pioneer( pose [ -0.556 4.023 0.000 0.000 ] name "hider2" color "blue")
 pioneer( pose [ 0.468 1.312 0.000 0.000 ] name "robot2" color "purple")
 pioneer( pose [ 2.545 1.647 0.000 0.000 ] name "robot3" color "green")
 #block( pose [ -24.269 48.001 0 180.000 ] color "red")
